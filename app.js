@@ -194,6 +194,11 @@ async function initCloud(){
   if(!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) return false;
   db = supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);
   cloudMode=true;
+  db.auth.onAuthStateChange((event, session)=>{
+    if(event==="PASSWORD_RECOVERY"){
+      setTimeout(()=>$("newPasswordDialog").showModal(),100);
+    }
+  });
   const {data:{session}}=await db.auth.getSession();
   if(session?.user){ currentUser=session.user; await loadCloud(); return true; }
   $("authView").classList.remove("hidden"); $("appView").classList.add("hidden");
@@ -430,6 +435,31 @@ $("loginBtn").addEventListener("click",async()=>{
   const {error}=await db.auth.signInWithPassword({email:$("email").value,password:$("password").value});
   if(error){$("authMsg").textContent=error.message;return}
   const {data:{user}}=await db.auth.getUser(); currentUser=user; await loadCloud();
+});
+$("forgotBtn").addEventListener("click",()=>{
+  $("resetEmail").value=$("email").value||"";
+  $("resetDialog").showModal();
+});
+$("sendResetBtn").addEventListener("click",async e=>{
+  e.preventDefault();
+  const email=$("resetEmail").value.trim();
+  if(!email){toast("Informe seu e-mail");return}
+  const redirectTo=window.location.origin+window.location.pathname;
+  const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo});
+  if(error){toast(error.message);return}
+  $("resetDialog").close();
+  toast("Link de recuperação enviado para o e-mail");
+});
+$("saveNewPasswordBtn").addEventListener("click",async e=>{
+  e.preventDefault();
+  const p=$("newPassword").value, c=$("confirmPassword").value;
+  if(p.length<6){toast("A senha deve ter pelo menos 6 caracteres");return}
+  if(p!==c){toast("As senhas não coincidem");return}
+  const {error}=await db.auth.updateUser({password:p});
+  if(error){toast(error.message);return}
+  $("newPasswordDialog").close();
+  toast("Senha alterada com sucesso");
+  setTimeout(()=>location.href=window.location.origin+window.location.pathname,1000);
 });
 $("signupBtn").addEventListener("click",async()=>{
   const {error}=await db.auth.signUp({email:$("email").value,password:$("password").value});

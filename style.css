@@ -30,3 +30,5 @@
 .cat-banco{--accent:#346b96;--tint:#eaf2f8}
 .cat-default{--accent:#607d8b;--tint:#f3f6f7}
 @media(max-width:600px){.subject-head{align-items:flex-start;flex-direction:column}.subject-progress-wrap{width:100%;text-align:left}.checklist{padding-left:14px;padding-right:14px}}
+
+.link-auth{background:transparent!important;color:var(--primary)!important;padding:7px!important;text-decoration:underline;text-underline-offset:3px}

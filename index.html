@@ -25,6 +25,7 @@
       <input id="email" type="email" placeholder="E-mail">
       <input id="password" type="password" placeholder="Senha">
       <button id="loginBtn">Entrar</button>
+      <button id="forgotBtn" class="link-auth" type="button">Esqueci minha senha</button>
       <button id="signupBtn" class="secondary">Criar conta</button>
       <p id="authMsg" class="small muted"></p>
     </div>
@@ -202,6 +203,30 @@
       </section>
     </main>
   </div>
+
+  <dialog id="resetDialog">
+    <form method="dialog" class="dialog-card">
+      <h3>Redefinir senha</h3>
+      <p class="muted small">Digite seu e-mail. Você receberá um link para criar uma nova senha.</p>
+      <label>E-mail<input id="resetEmail" type="email" placeholder="seu@email.com"></label>
+      <div class="dialog-actions">
+        <button value="cancel" class="secondary">Cancelar</button>
+        <button id="sendResetBtn" value="default">Enviar link</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="newPasswordDialog">
+    <form method="dialog" class="dialog-card">
+      <h3>Criar nova senha</h3>
+      <p class="muted small">Digite a nova senha para sua conta.</p>
+      <label>Nova senha<input id="newPassword" type="password" minlength="6" placeholder="Nova senha"></label>
+      <label>Confirmar senha<input id="confirmPassword" type="password" minlength="6" placeholder="Repita a nova senha"></label>
+      <div class="dialog-actions">
+        <button id="saveNewPasswordBtn" value="default">Salvar nova senha</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="topicDialog">
     <form method="dialog" class="dialog-card">
