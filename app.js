@@ -157,6 +157,26 @@ const uid = () => crypto.randomUUID ? crypto.randomUUID() : String(Date.now()+Ma
 const fmtDate = d => new Date(d+"T12:00:00").toLocaleDateString("pt-BR");
 const esc = s => String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 
+
+window.forgotPassword = async function(){
+  try{
+    if(!db){ alert("A conexão com o Supabase ainda não foi carregada. Atualize a página e tente novamente."); return; }
+    let email = ($("email")?.value || "").trim();
+    if(!email) email = (window.prompt("Digite o e-mail cadastrado para receber o link de recuperação:") || "").trim();
+    if(!email) return;
+
+    const redirectTo = "https://medeirosrebeca.github.io/dataprev-estudos/";
+    const {error} = await db.auth.resetPasswordForEmail(email,{redirectTo});
+    if(error){
+      alert("Não foi possível enviar o link: " + error.message);
+      return;
+    }
+    alert("Link de recuperação enviado. Verifique sua caixa de entrada e também o spam.");
+  }catch(err){
+    alert("Erro ao solicitar recuperação de senha: " + (err?.message || err));
+  }
+};
+
 function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2200); }
 function initialTopics(){ return BASE_TOPICS.map((t,i)=>({id:uid(),discipline:t[0],topic:t[1],status:"nao_iniciado",order:i})); }
 
@@ -196,9 +216,19 @@ async function initCloud(){
   cloudMode=true;
   db.auth.onAuthStateChange((event, session)=>{
     if(event==="PASSWORD_RECOVERY"){
-      setTimeout(()=>$("newPasswordDialog").showModal(),100);
+      setTimeout(()=>{
+        $("authView").classList.remove("hidden");
+        $("appView").classList.add("hidden");
+        $("newPasswordDialog").showModal();
+      },150);
     }
   });
+  const recoveryInUrl = window.location.hash.includes("type=recovery") || window.location.search.includes("type=recovery");
+  if(recoveryInUrl){
+    setTimeout(()=>{
+      try{$("newPasswordDialog").showModal();}catch(e){}
+    },500);
+  }
   const {data:{session}}=await db.auth.getSession();
   if(session?.user){ currentUser=session.user; await loadCloud(); return true; }
   $("authView").classList.remove("hidden"); $("appView").classList.add("hidden");
@@ -435,10 +465,6 @@ $("loginBtn").addEventListener("click",async()=>{
   const {error}=await db.auth.signInWithPassword({email:$("email").value,password:$("password").value});
   if(error){$("authMsg").textContent=error.message;return}
   const {data:{user}}=await db.auth.getUser(); currentUser=user; await loadCloud();
-});
-$("forgotBtn").addEventListener("click",()=>{
-  $("resetEmail").value=$("email").value||"";
-  $("resetDialog").showModal();
 });
 $("sendResetBtn").addEventListener("click",async e=>{
   e.preventDefault();
