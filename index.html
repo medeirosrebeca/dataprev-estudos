@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>DATAPREV 2026 | Monitor de Estudos V6</title>
-  <link rel="stylesheet" href="style.css?v=61">
+  <title>DATAPREV 2026 | Monitor de Estudos V7</title>
+  <link rel="stylesheet" href="style.css?v=70">
 </head>
 <body>
 
@@ -56,12 +56,14 @@
     </section>
 
     <nav class="tabs">
-      <button data-tab="plano" class="active">Plano até a prova</button>
+      <button data-tab="diario" class="active">Estudo diário</button>
+      <button data-tab="plano">Plano até a prova</button>
       <button data-tab="cronograma">Cronograma Estratégia</button>
       <button data-tab="edital">Cobertura do edital</button>
     </nav>
 
-    <section id="plano"></section>
+    <section id="diario"></section>
+    <section id="plano" class="hidden"></section>
     <section id="cronograma" class="hidden"></section>
     <section id="edital" class="hidden"></section>
   </main>
@@ -163,8 +165,8 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=61"></script>
-<script src="courses.js?v=61"></script>
-<script src="app.js?v=61"></script>
+<script src="config.js?v=70"></script>
+<script src="courses.js?v=70"></script>
+<script src="app.js?v=70"></script>
 </body>
 </html>

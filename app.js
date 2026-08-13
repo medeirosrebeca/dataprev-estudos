@@ -50,7 +50,7 @@ function render(){
  $("qtotal").textContent=q;
  $("accuracy").textContent=q?Math.round(c/q*100)+"%":"0%";
  document.querySelectorAll(".lesson").forEach(el=>el.onclick=()=>openLesson(el.dataset.s,el.dataset.n));
- renderCoverage(); renderPlan();
+ renderCoverage(); renderPlan(); renderDailyPlan();
 }
 
 function openLesson(s,n){
@@ -125,9 +125,235 @@ function renderCoverage(){
  ];
  $("edital").innerHTML=`<div class="coverage"><div class="covercard"><b class="green">${COURSE_DATA.reduce((a,c)=>a+c.lessons.length,0)}</b><span> aulas do Estratégia organizadas</span></div><div class="covercard"><b class="yellow">${gaps.length}</b><span> pontos para conferência</span></div><div class="covercard"><b>Base</b><span> Estratégia + correspondência com edital</span></div></div><div class="coverlist"><h3>Pontos do edital que merecem conferência</h3>${gaps.map(g=>`<div class="coveritem"><b>${esc(g[0])}: ${esc(g[1])}</b><div class="yellow">${esc(g[2])}</div></div>`).join("")}</div>`;
 }
+
+const DAILY_START = new Date("2026-08-13T00:00:00-03:00");
+const DAILY_END = new Date("2026-10-10T00:00:00-03:00");
+const SUBJECT_PRIORITY = {
+ "Banco de Dados e Ciência de Dados":10,
+ "Matemática e Estatística Aplicada":10,
+ "Programação e Softwares em Ciência de Dados":9,
+ "Língua Portuguesa":7,
+ "Raciocínio Lógico":6,
+ "Língua Inglesa":5,
+ "Legislação de Segurança da Informação e Proteção de Dados":5,
+ "Inteligência Artificial":4,
+ "Atualidades":3
+};
+function dayKey(d){return d.toISOString().slice(0,10)}
+function fmtDay(d){return d.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit"}).replace(".","")}
+function allLessons(){
+ let arr=[];
+ COURSE_DATA.forEach(c=>c.lessons.forEach((l,i)=>arr.push({
+   s:c.subject,n:l[0],title:l[1],edital:l[2],color:c.color,
+   priority:SUBJECT_PRIORITY[c.subject]||1,order:i
+ })));
+ return arr;
+}
+function studyDays(){
+ const days=[]; let d=new Date(DAILY_START);
+ while(d<=DAILY_END){days.push(new Date(d));d.setDate(d.getDate()+1)}
+ return days;
+}
+function buildDailySchedule(){
+ const days=studyDays(), lessons=allLessons();
+ const high=lessons.filter(x=>x.priority>=9);
+ const medium=lessons.filter(x=>x.priority>=6&&x.priority<9);
+ const light=lessons.filter(x=>x.priority<6);
+ const queues=[high,medium,light];
+ queues.forEach(q=>q.sort((a,b)=>b.priority-a.priority||a.s.localeCompare(b.s)||a.order-b.order));
+ const schedule={}; days.forEach(d=>schedule[dayKey(d)]=[]);
+ let idx=0;
+ // 101 aulas distribuídas com maior carga no início e preservando reta final para revisão
+ [...high,...medium,...light].forEach((lesson,j)=>{
+   const usable=Math.min(45,days.length);
+   const target=Math.floor(j*usable/lessons.length);
+   let di=Math.min(target + (j%3===0?0:Math.floor(j/usable)), usable-1);
+   while(schedule[dayKey(days[di])].length>=3 && di<usable-1)di++;
+   schedule[dayKey(days[di])].push({...lesson,type:"Teoria"});
+ });
+ // A partir de 31/08 adiciona rotina de questões/revisão sem duplicar aula como "nova"
+ days.forEach((d,i)=>{
+   const k=dayKey(d);
+   if(d>=new Date("2026-08-31T00:00:00-03:00") && d<=new Date("2026-09-20T23:59:59-03:00"))
+     schedule[k].push({type:"Questões",title:"Bloco de questões",detail:"30 a 40 questões dos conteúdos já estudados"});
+   if(d>=new Date("2026-09-21T00:00:00-03:00") && d<=new Date("2026-10-03T23:59:59-03:00")){
+     schedule[k]=schedule[k].slice(0,1);
+     schedule[k].push({type:"Revisão",title:"Revisão dirigida",detail:"Erros, resumos e conteúdos com aproveitamento abaixo de 70%"});
+     schedule[k].push({type:"Questões",title:"Questões e mini-simulado",detail:"40 a 60 questões"});
+   }
+   if(d>=new Date("2026-10-04T00:00:00-03:00") && d<=new Date("2026-10-09T23:59:59-03:00")){
+     schedule[k]=[
+       {type:"Simulado",title:"Reta final",detail:"Simulado/questões + revisão do caderno de erros"},
+       {type:"Revisão",title:i%2?"Legislação, Português e Inglês":"Ciência de Dados, Estatística, SQL e ML",detail:"Revisão objetiva dos pontos-chave"}
+     ];
+   }
+   if(k==="2026-10-10") schedule[k]=[
+     {type:"Véspera",title:"Revisão leve",detail:"Fórmulas, LGPD/LAI, SQL, ML, interpretação e erros recorrentes. Sem conteúdo novo."}
+   ];
+ });
+ return schedule;
+}
+function taskDone(t){
+ if(!t.s)return false;
+ return studiedState(state(key(t.s,t.n)));
+}
+function renderTask(t){
+ const done=taskDone(t);
+ if(t.s){
+   return `<button class="daily-task ${done?"task-done":""}" data-ds="${esc(t.s)}" data-dn="${esc(t.n)}" style="--tc:${t.color}">
+    <span class="task-check">${done?"✓":"○"}</span>
+    <span><small>${esc(t.type)} · ${esc(t.s)} · Aula ${esc(t.n)}</small><b>${esc(t.title)}</b></span>
+   </button>`;
+ }
+ return `<div class="daily-task routine"><span class="task-check">•</span><span><small>${esc(t.type)}</small><b>${esc(t.title)}</b><em>${esc(t.detail||"")}</em></span></div>`;
+}
+function renderDailyPlan(){
+ const schedule=buildDailySchedule();
+ const today=new Date(); today.setHours(0,0,0,0);
+ let active=today<DAILY_START?new Date(DAILY_START):today>DAILY_END?new Date(DAILY_END):today;
+ const todayKey=dayKey(active), tasks=schedule[todayKey]||[];
+ const theory=tasks.filter(x=>x.s), done=theory.filter(taskDone).length;
+ const weekStart=new Date(active); weekStart.setDate(active.getDate()-active.getDay()+1);
+ const weekDays=[0,1,2,3,4,5,6].map(n=>{let d=new Date(weekStart);d.setDate(d.getDate()+n);return d}).filter(d=>d>=DAILY_START&&d<=DAILY_END);
+ const weekHtml=weekDays.map(d=>{
+   const k=dayKey(d), ts=schedule[k]||[], td=ts.filter(x=>x.s), dc=td.filter(taskDone).length;
+   return `<article class="day-card ${k===todayKey?"today":""}">
+    <div class="day-head"><b>${fmtDay(d)}</b><span>${td.length?dc+"/"+td.length:"rotina"}</span></div>
+    ${ts.map(renderTask).join("")||'<p class="muted">Sem tarefa programada.</p>'}
+   </article>`;
+ }).join("");
+ const pct=theory.length?Math.round(done/theory.length*100):0;
+ $("diario").innerHTML=`<div class="daily-hero">
+   <div><span class="eyebrow">PLANEJAMENTO DIÁRIO</span><h2>Hoje · ${active.toLocaleDateString("pt-BR",{day:"2-digit",month:"long"})}</h2>
+   <p>Abra a aula diretamente por aqui. Ao marcar “Estudei” no popup, o item também será concluído neste plano.</p></div>
+   <div class="daily-score"><b>${pct}%</b><span>das aulas de hoje</span></div>
+  </div>
+  <div class="today-list">${tasks.map(renderTask).join("")}</div>
+  <div class="daily-guidance"><span>Meta sugerida</span><b>${active<new Date("2026-08-31T00:00:00-03:00")?"2 a 3 aulas + 20 a 30 questões":"teoria/revisão + questões todos os dias"}</b><span>Se não concluir uma aula, ela continua visível como pendente no Cronograma Estratégia.</span></div>
+  <div class="week-title"><div><h3>Esta semana</h3><p>Visão rápida do que estudar e do que já foi concluído.</p></div></div>
+  <div class="week-grid">${weekHtml}</div>
+  <details class="full-calendar"><summary>Ver calendário completo até a prova</summary>
+   <div class="calendar-grid">${studyDays().map(d=>`<article class="calendar-day"><b>${fmtDay(d)}</b>${(schedule[dayKey(d)]||[]).map(t=>t.s?`<span class="${taskDone(t)?"mini-done":""}">${taskDone(t)?"✓ ":""}${esc(t.s)} · ${esc(t.n)}</span>`:`<span>${esc(t.type)} · ${esc(t.title)}</span>`).join("")}</article>`).join("")}</div>
+  </details>`;
+ document.querySelectorAll(".daily-task[data-ds]").forEach(el=>el.onclick=()=>openLesson(el.dataset.ds,el.dataset.dn));
+}
+
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
- document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");
- ["plano","cronograma","edital"].forEach(id=>$(id).classList.toggle("hidden",id!==b.dataset.tab))
+ 
+const DAILY_START = new Date("2026-08-13T00:00:00-03:00");
+const DAILY_END = new Date("2026-10-10T00:00:00-03:00");
+const SUBJECT_PRIORITY = {
+ "Banco de Dados e Ciência de Dados":10,
+ "Matemática e Estatística Aplicada":10,
+ "Programação e Softwares em Ciência de Dados":9,
+ "Língua Portuguesa":7,
+ "Raciocínio Lógico":6,
+ "Língua Inglesa":5,
+ "Legislação de Segurança da Informação e Proteção de Dados":5,
+ "Inteligência Artificial":4,
+ "Atualidades":3
+};
+function dayKey(d){return d.toISOString().slice(0,10)}
+function fmtDay(d){return d.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit"}).replace(".","")}
+function allLessons(){
+ let arr=[];
+ COURSE_DATA.forEach(c=>c.lessons.forEach((l,i)=>arr.push({
+   s:c.subject,n:l[0],title:l[1],edital:l[2],color:c.color,
+   priority:SUBJECT_PRIORITY[c.subject]||1,order:i
+ })));
+ return arr;
+}
+function studyDays(){
+ const days=[]; let d=new Date(DAILY_START);
+ while(d<=DAILY_END){days.push(new Date(d));d.setDate(d.getDate()+1)}
+ return days;
+}
+function buildDailySchedule(){
+ const days=studyDays(), lessons=allLessons();
+ const high=lessons.filter(x=>x.priority>=9);
+ const medium=lessons.filter(x=>x.priority>=6&&x.priority<9);
+ const light=lessons.filter(x=>x.priority<6);
+ const queues=[high,medium,light];
+ queues.forEach(q=>q.sort((a,b)=>b.priority-a.priority||a.s.localeCompare(b.s)||a.order-b.order));
+ const schedule={}; days.forEach(d=>schedule[dayKey(d)]=[]);
+ let idx=0;
+ // 101 aulas distribuídas com maior carga no início e preservando reta final para revisão
+ [...high,...medium,...light].forEach((lesson,j)=>{
+   const usable=Math.min(45,days.length);
+   const target=Math.floor(j*usable/lessons.length);
+   let di=Math.min(target + (j%3===0?0:Math.floor(j/usable)), usable-1);
+   while(schedule[dayKey(days[di])].length>=3 && di<usable-1)di++;
+   schedule[dayKey(days[di])].push({...lesson,type:"Teoria"});
+ });
+ // A partir de 31/08 adiciona rotina de questões/revisão sem duplicar aula como "nova"
+ days.forEach((d,i)=>{
+   const k=dayKey(d);
+   if(d>=new Date("2026-08-31T00:00:00-03:00") && d<=new Date("2026-09-20T23:59:59-03:00"))
+     schedule[k].push({type:"Questões",title:"Bloco de questões",detail:"30 a 40 questões dos conteúdos já estudados"});
+   if(d>=new Date("2026-09-21T00:00:00-03:00") && d<=new Date("2026-10-03T23:59:59-03:00")){
+     schedule[k]=schedule[k].slice(0,1);
+     schedule[k].push({type:"Revisão",title:"Revisão dirigida",detail:"Erros, resumos e conteúdos com aproveitamento abaixo de 70%"});
+     schedule[k].push({type:"Questões",title:"Questões e mini-simulado",detail:"40 a 60 questões"});
+   }
+   if(d>=new Date("2026-10-04T00:00:00-03:00") && d<=new Date("2026-10-09T23:59:59-03:00")){
+     schedule[k]=[
+       {type:"Simulado",title:"Reta final",detail:"Simulado/questões + revisão do caderno de erros"},
+       {type:"Revisão",title:i%2?"Legislação, Português e Inglês":"Ciência de Dados, Estatística, SQL e ML",detail:"Revisão objetiva dos pontos-chave"}
+     ];
+   }
+   if(k==="2026-10-10") schedule[k]=[
+     {type:"Véspera",title:"Revisão leve",detail:"Fórmulas, LGPD/LAI, SQL, ML, interpretação e erros recorrentes. Sem conteúdo novo."}
+   ];
+ });
+ return schedule;
+}
+function taskDone(t){
+ if(!t.s)return false;
+ return studiedState(state(key(t.s,t.n)));
+}
+function renderTask(t){
+ const done=taskDone(t);
+ if(t.s){
+   return `<button class="daily-task ${done?"task-done":""}" data-ds="${esc(t.s)}" data-dn="${esc(t.n)}" style="--tc:${t.color}">
+    <span class="task-check">${done?"✓":"○"}</span>
+    <span><small>${esc(t.type)} · ${esc(t.s)} · Aula ${esc(t.n)}</small><b>${esc(t.title)}</b></span>
+   </button>`;
+ }
+ return `<div class="daily-task routine"><span class="task-check">•</span><span><small>${esc(t.type)}</small><b>${esc(t.title)}</b><em>${esc(t.detail||"")}</em></span></div>`;
+}
+function renderDailyPlan(){
+ const schedule=buildDailySchedule();
+ const today=new Date(); today.setHours(0,0,0,0);
+ let active=today<DAILY_START?new Date(DAILY_START):today>DAILY_END?new Date(DAILY_END):today;
+ const todayKey=dayKey(active), tasks=schedule[todayKey]||[];
+ const theory=tasks.filter(x=>x.s), done=theory.filter(taskDone).length;
+ const weekStart=new Date(active); weekStart.setDate(active.getDate()-active.getDay()+1);
+ const weekDays=[0,1,2,3,4,5,6].map(n=>{let d=new Date(weekStart);d.setDate(d.getDate()+n);return d}).filter(d=>d>=DAILY_START&&d<=DAILY_END);
+ const weekHtml=weekDays.map(d=>{
+   const k=dayKey(d), ts=schedule[k]||[], td=ts.filter(x=>x.s), dc=td.filter(taskDone).length;
+   return `<article class="day-card ${k===todayKey?"today":""}">
+    <div class="day-head"><b>${fmtDay(d)}</b><span>${td.length?dc+"/"+td.length:"rotina"}</span></div>
+    ${ts.map(renderTask).join("")||'<p class="muted">Sem tarefa programada.</p>'}
+   </article>`;
+ }).join("");
+ const pct=theory.length?Math.round(done/theory.length*100):0;
+ $("diario").innerHTML=`<div class="daily-hero">
+   <div><span class="eyebrow">PLANEJAMENTO DIÁRIO</span><h2>Hoje · ${active.toLocaleDateString("pt-BR",{day:"2-digit",month:"long"})}</h2>
+   <p>Abra a aula diretamente por aqui. Ao marcar “Estudei” no popup, o item também será concluído neste plano.</p></div>
+   <div class="daily-score"><b>${pct}%</b><span>das aulas de hoje</span></div>
+  </div>
+  <div class="today-list">${tasks.map(renderTask).join("")}</div>
+  <div class="daily-guidance"><span>Meta sugerida</span><b>${active<new Date("2026-08-31T00:00:00-03:00")?"2 a 3 aulas + 20 a 30 questões":"teoria/revisão + questões todos os dias"}</b><span>Se não concluir uma aula, ela continua visível como pendente no Cronograma Estratégia.</span></div>
+  <div class="week-title"><div><h3>Esta semana</h3><p>Visão rápida do que estudar e do que já foi concluído.</p></div></div>
+  <div class="week-grid">${weekHtml}</div>
+  <details class="full-calendar"><summary>Ver calendário completo até a prova</summary>
+   <div class="calendar-grid">${studyDays().map(d=>`<article class="calendar-day"><b>${fmtDay(d)}</b>${(schedule[dayKey(d)]||[]).map(t=>t.s?`<span class="${taskDone(t)?"mini-done":""}">${taskDone(t)?"✓ ":""}${esc(t.s)} · ${esc(t.n)}</span>`:`<span>${esc(t.type)} · ${esc(t.title)}</span>`).join("")}</article>`).join("")}</div>
+  </details>`;
+ document.querySelectorAll(".daily-task[data-ds]").forEach(el=>el.onclick=()=>openLesson(el.dataset.ds,el.dataset.dn));
+}
+
+document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");
+ ["diario","plano","cronograma","edital"].forEach(id=>$(id).classList.toggle("hidden",id!==b.dataset.tab))
 });
 $("login").onclick=async()=>{const {data,error}=await db.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});if(error)return $("authmsg").textContent=error.message;user=data.user;enter()}
 $("signup").onclick=async()=>{const {error}=await db.auth.signUp({email:$("email").value.trim(),password:$("password").value});$("authmsg").textContent=error?error.message:"Conta criada. Confirme o e-mail, se solicitado."}
