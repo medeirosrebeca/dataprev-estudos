@@ -1,14 +1,170 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DATAPREV 2026 | Monitor de Estudos V5</title><link rel="stylesheet" href="style.css?v=5"></head>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DATAPREV 2026 | Monitor de Estudos V6</title>
+  <link rel="stylesheet" href="style.css?v=61">
+</head>
 <body>
-<div id="auth" class="center"><section class="login card"><div class="brand"><span>DP</span><div><h1>DATAPREV 2026</h1><small>Perfil 4 · Inteligência da Informação</small></div></div><h2>Acessar</h2><p>Seu progresso fica sincronizado pelo Supabase.</p><input id="email" type="email" placeholder="E-mail"><input id="password" type="password" placeholder="Senha"><button id="login">Entrar</button><button id="forgot" class="link">Esqueci minha senha</button><button id="signup" class="secondary">Criar conta</button><div id="authmsg" class="msg"></div></section></div>
+
+<div id="auth" class="center">
+  <section class="login card">
+    <div class="brand">
+      <span>DP</span>
+      <div>
+        <h1>DATAPREV 2026</h1>
+        <small>Perfil 4 · Inteligência da Informação</small>
+      </div>
+    </div>
+
+    <h2>Acessar</h2>
+    <p>Seu progresso fica sincronizado pelo Supabase.</p>
+
+    <input id="email" type="email" placeholder="E-mail">
+    <input id="password" type="password" placeholder="Senha">
+
+    <button id="login">Entrar</button>
+    <button id="forgot" class="link">Esqueci minha senha</button>
+    <button id="signup" class="secondary">Criar conta</button>
+
+    <div id="authmsg" class="msg"></div>
+  </section>
+</div>
+
 <div id="app" class="hidden">
-<header><div><h1>DATAPREV 2026</h1><p>Perfil 4 · Inteligência da Informação · Estratégia como base de estudo</p></div><div class="header-actions"><button id="account" class="secondary">Minha conta</button><button id="logout" class="secondary">Sair</button></div></header>
-<main>
-<section class="stats"><div class="stat"><b id="pct">0%</b><span>progresso geral</span></div><div class="stat"><b id="done">0</b><span>aulas concluídas</span></div><div class="stat"><b id="qtotal">0</b><span>questões</span></div><div class="stat"><b id="accuracy">0%</b><span>acertos</span></div></section>
-<nav class="tabs"><button data-tab="cronograma" class="active">Cronograma Estratégia</button><button data-tab="edital">Cobertura do edital</button></nav>
-<section id="cronograma"></section><section id="edital" class="hidden"></section>
-</main></div>
-<dialog id="lessonDlg"><form method="dialog" class="dialog"><button class="x" value="cancel">×</button><h2 id="dlgTitle"></h2><p id="dlgContent"></p><div class="editalbox"><b>Correspondência com o edital</b><p id="dlgEdital"></p></div><label>Status<select id="dlgStatus"><option>Não iniciado</option><option>Estudando</option><option>Teoria concluída</option><option>Questões feitas</option><option>Revisado</option></select></label><div class="grid2"><label>Questões<input id="dlgQuestions" type="number" min="0"></label><label>Acertos<input id="dlgCorrect" type="number" min="0"></label></div><label>Observações<textarea id="dlgNotes" rows="3"></textarea></label><button id="saveLesson" type="button">Salvar progresso</button></form></dialog>
-<dialog id="accountDlg"><form method="dialog" class="dialog"><button class="x" value="cancel">×</button><h2>Minha conta</h2><p id="accountEmail"></p><label>Nova senha<input id="newpass" type="password" minlength="6"></label><label>Confirmar senha<input id="newpass2" type="password" minlength="6"></label><button id="changePass" type="button">Alterar senha</button></form></dialog>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="courses.js?v=5"></script><script src="app.js?v=5"></script></body></html>
+  <header>
+    <div>
+      <h1>DATAPREV 2026</h1>
+      <p>Perfil 4 · Inteligência da Informação · Estratégia como base de estudo</p>
+    </div>
+
+    <div class="header-actions">
+      <button id="account" class="secondary">Minha conta</button>
+      <button id="logout" class="secondary">Sair</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="stats">
+      <div class="stat"><b id="pct">0%</b><span>conteúdo estudado</span></div>
+      <div class="stat"><b id="done">0 / 0</b><span>aulas estudadas</span></div>
+      <div class="stat"><b id="reviewed">0 / 0</b><span>aulas revisadas</span></div>
+      <div class="stat"><b id="remaining">0</b><span>aulas faltando</span></div>
+      <div class="stat"><b id="qtotal">0</b><span>questões</span></div>
+      <div class="stat"><b id="accuracy">0%</b><span>acertos</span></div>
+    </section>
+
+    <nav class="tabs">
+      <button data-tab="plano" class="active">Plano até a prova</button>
+      <button data-tab="cronograma">Cronograma Estratégia</button>
+      <button data-tab="edital">Cobertura do edital</button>
+    </nav>
+
+    <section id="plano"></section>
+    <section id="cronograma" class="hidden"></section>
+    <section id="edital" class="hidden"></section>
+  </main>
+</div>
+
+<dialog id="lessonDlg">
+  <form method="dialog" class="dialog">
+    <button class="x" value="cancel">×</button>
+
+    <h2 id="dlgTitle"></h2>
+    <p id="dlgContent"></p>
+
+    <div class="editalbox">
+      <b>Correspondência com o edital</b>
+      <p id="dlgEdital"></p>
+    </div>
+
+    <div class="study-checks">
+      <label class="checkline">
+        <input id="dlgStudied" type="checkbox">
+        <span>Estudei esta aula</span>
+      </label>
+
+      <label class="checkline">
+        <input id="dlgReviewed" type="checkbox">
+        <span>Revisei esta aula</span>
+      </label>
+
+      <label class="checkline">
+        <input id="dlgDidQuestions" type="checkbox">
+        <span>Fiz questões deste conteúdo</span>
+      </label>
+    </div>
+
+    <label>
+      Status
+      <select id="dlgStatus">
+        <option>Não iniciado</option>
+        <option>Estudando</option>
+        <option>Teoria concluída</option>
+        <option>Questões feitas</option>
+        <option>Revisado</option>
+      </select>
+    </label>
+
+    <div class="grid2">
+      <label>
+        Questões
+        <input id="dlgQuestions" type="number" min="0">
+      </label>
+      <label>
+        Acertos
+        <input id="dlgCorrect" type="number" min="0">
+      </label>
+    </div>
+
+    <label>
+      Resumo / mapa mental
+      <textarea id="dlgSummary" rows="5" placeholder="Resumo da aula, relações entre conceitos, fórmulas, fluxos ou mapa mental em texto."></textarea>
+    </label>
+
+    <label>
+      Pontos-chave
+      <textarea id="dlgKeyPoints" rows="4" placeholder="Definições, fórmulas, comandos e conceitos que precisam ser lembrados."></textarea>
+    </label>
+
+    <label>
+      Erros, dúvidas e pegadinhas
+      <textarea id="dlgMistakes" rows="4" placeholder="Registre erros em questões, dúvidas e pegadinhas para revisar depois."></textarea>
+    </label>
+
+    <label>
+      Observações livres
+      <textarea id="dlgNotes" rows="3"></textarea>
+    </label>
+
+    <button id="saveLesson" type="button">Salvar progresso</button>
+  </form>
+</dialog>
+
+<dialog id="accountDlg">
+  <form method="dialog" class="dialog">
+    <button class="x" value="cancel">×</button>
+    <h2>Minha conta</h2>
+    <p id="accountEmail"></p>
+
+    <label>
+      Nova senha
+      <input id="newpass" type="password" minlength="6">
+    </label>
+
+    <label>
+      Confirmar senha
+      <input id="newpass2" type="password" minlength="6">
+    </label>
+
+    <button id="changePass" type="button">Alterar senha</button>
+  </form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js?v=61"></script>
+<script src="courses.js?v=61"></script>
+<script src="app.js?v=61"></script>
+</body>
+</html>
